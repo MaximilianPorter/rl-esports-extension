@@ -192,12 +192,12 @@ h1 {
 
   display: grid;
 }
-.event-more-info::before {
+.event-more-info--active.event-more-info::before {
   pointer-events: all;
   position: absolute;
   content: "";
-  width: 500%;
-  height: 500%;
+  width: 1000%;
+  height: 2000%;
   transform: translate(-50%, -50%);
   background-color: transparent;
   z-index: -1;
@@ -212,6 +212,7 @@ h1 {
   transform: translate(-50%, -50%);
   opacity: 1;
 }
+
 .event-more-info--body {
   grid-column: 1 / span 2;
   padding: 2rem 0;
@@ -314,45 +315,39 @@ h1 {
   border-radius: 10px;
 }
 .reminder-section {
+  pointer-events: none;
   height: 0;
   opacity: 0;
 
   transition: all 0.2s ease-in-out;
 }
 .reminder-section--active {
+  pointer-events: all;
   height: 100px;
   opacity: 1;
 }
-.reminder-checks {
+.reminder-time-buttons {
   display: flex;
   justify-content: center;
   gap: 3rem;
   /* padding: 0 2rem; */
 }
-.reminder-checkbox {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.reminder-checkbox input[type="checkbox"] {
-  display: none;
-}
-.reminder-checkbox label {
-  -webkit-user-select: none;
-  user-select: none;
+.reminder-time-button {
   cursor: pointer;
   padding: 0.5rem 1rem;
 
   background-color: rgba(255, 255, 255, 0.2);
   border-radius: 10px;
   font-weight: 700;
+  border: none;
   color: var(--text);
 
   transition: all 0.2s ease;
 }
-.reminder-checkbox label:hover {
+.reminder-time-button:hover {
   background-color: rgba(255, 255, 255, 0.4);
 }
-.reminder-checkbox input[type="checkbox"]:checked + label {
-  background-color: rgba(0, 255, 0, 0.2);
+.reminder-time-button[aria-pressed="true"] {
+  background-color: #94d2bd;
+  color: var(--bg);
 }
