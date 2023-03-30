@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "RL Esports Updates",
+  "description": "Informs you about upcoming RL Esports matches",
+  "version": "1.0",
+  "icons": {
+    "16": "images/rl-icon-16.png",
+    "24": "images/rl-icon-24.png",
+    "32": "images/rl-icon-32.png",
+    "48": "images/rl-icon-48.png",
+    "128": "images/rl-icon-128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "images/rl-icon-16.png",
+      "24": "images/rl-icon-24.png",
+      "32": "images/rl-icon-32.png"
+    },
+    "default_title": "RL Esports Updates",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["tabs", "bookmarks", "unlimitedStorage", "alarms"],
+  "content_scripts": [
+    {
+      "js": ["scripts/content.js", "scripts/popup.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "background": {
+    "service_worker": "scripts/background.js"
+  }
+}
