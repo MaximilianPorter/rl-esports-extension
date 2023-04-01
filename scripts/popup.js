@@ -11,20 +11,23 @@ const moreInfo_image = eventMoreInfoEl
   .querySelector("img");
 const moreInfo_stagesList = eventMoreInfoEl.querySelector(`.event-stages`);
 
-const reminderTimeButtons = document.querySelectorAll(`.reminder-time-button`);
+const menuButtonEl = document.querySelector(`.menu-button`);
+const menuDropdownEl = document.querySelector(`.menu-dropdown`);
+const menuAlarmsListEl = document.querySelector(`.menu-list`);
 
-// chrome.alarms.create(
-//   "NAME OF EVENT STAGE",
-//   {
-//     when: Date.now() + 5000,
-//   },
-//   (alarm) => {
-//     console.log("alarm is set");
-//   }
-// );
+const alarmsCreated = JSON.parse(localStorage.getItem(`alarmsCreated`)) || [];
+addItemsToMenuAlarmList();
 
-const allEvents = await getEvents();
+let allEvents = null;
+getEvents().then((data) => {
+  allEvents = data;
+  console.log(allEvents);
+});
 fillData();
+
+menuButtonEl.addEventListener(`click`, () => {
+  menuDropdownEl.classList.toggle(`menu-dropdown--active`);
+});
 
 // click on event (for more info)
 eventListEls.forEach((eventListEl) => {
@@ -60,13 +63,47 @@ eventMoreInfoEl.addEventListener(`click`, (event) => {
   }
 });
 
-reminderTimeButtons.forEach((reminderTimeButton) =>
-  reminderTimeButton.addEventListener(`click`, (event) => {
-    console.log(reminderTimeButton.ariaPressed);
+moreInfo_stagesList.addEventListener(`click`, (event) => {
+  const reminderTimeButton = event.target.closest(`.reminder-time-button`);
+  if (reminderTimeButton) {
     reminderTimeButton.ariaPressed =
       reminderTimeButton.ariaPressed === "true" ? "false" : "true";
-  })
-);
+
+    const confirmButton = reminderTimeButton
+      .closest(`.reminder-section`)
+      .querySelector(`.remind-me-confirm`);
+    confirmButton.classList.remove(`remind-me-confirm--clicked`);
+  }
+
+  const confirmReminderButton = event.target.closest(".remind-me-confirm");
+  if (confirmReminderButton) {
+    event.preventDefault();
+    const form = confirmReminderButton.closest(`form`);
+    const selectedTimes = form.querySelectorAll(
+      `.reminder-time-button[aria-pressed="true"]`
+    );
+
+    if (selectedTimes.length === 0) return;
+
+    confirmReminderButton.classList.add(`remind-me-confirm--clicked`);
+    selectedTimes.forEach((selectedTime) => {
+      const date = selectedTime.dataset.date;
+      const title = `Reminder for ${moreInfo_title.textContent}`;
+      const stageTitle = selectedTime
+        .closest(`.event-stage`)
+        .querySelector(`.event-stage-title`)
+        .querySelector("p").textContent;
+      console.log(`date: ${date}`);
+      createAlarm(
+        `${title} : ${stageTitle} - ${simplifyDate(
+          new Date(date),
+          navigator.location
+        )}`,
+        new Date(date)
+      );
+    });
+  }
+});
 
 document.addEventListener(`click`, (event) => {});
 
@@ -195,9 +232,10 @@ function addEventToDOM(leagueEvent, eventList) {
 }
 
 function addInfoForEvent(eventId) {
+  if (!allEvents) return;
   const leagueEvent = allEvents.find((event) => event._id === eventId);
-  const { _id, name, startDate, image, stages } = leagueEvent;
-  moreInfo_title.textContent = name;
+  const { _id, name: eventName, startDate, image, stages } = leagueEvent;
+  moreInfo_title.textContent = eventName;
   moreInfo_image.src = image;
   moreInfo_stagesList.innerHTML = ``;
 
@@ -209,10 +247,13 @@ function addInfoForEvent(eventId) {
       liquipedia: stageLiquipediaLink,
     } = stage;
 
+    const remindMeButtonDisabled = new Date() - new Date(stageStartDate) >= 0;
+    console.log(remindMeButtonDisabled);
+
     const stageMarkup = `
   <div class="event-stage">
     <h4 class="event-stage-title">
-      ${stageName}
+      <p>${stageName}</p>
       <a
         class="liquipedia-link"
         href="${stageLiquipediaLink}"
@@ -230,7 +271,9 @@ function addInfoForEvent(eventId) {
       new Date(stageEndDate),
       navigator.location
     )}</p>
-    <button class="remind-button remind-me-button">REMIND ME</button>
+    <button class="remind-button remind-me-button ${
+      remindMeButtonDisabled ? `remind-me-button--disabled` : ``
+    }">REMIND ME</button>
     <div class="reminder-section">
       <!--  reminder-section--active -->
       <form action="" class="remind-me-form">
@@ -238,27 +281,46 @@ function addInfoForEvent(eventId) {
           <button
             type="button"
             class="reminder-time-button"
-            aria-pressed="false"
+            aria-pressed="${containsAlarm(
+              `Reminder for ${eventName} : ${stageName} - ${simplifyDate(
+                HourBefore(new Date(stageStartDate)),
+                navigator.location
+              )}`
+            )}"
+            data-date="${HourBefore(new Date(stageStartDate))}"
           >
             1 Hour Before
           </button>
           <button
             type="button"
             class="reminder-time-button"
-            aria-pressed="false"
+            aria-pressed="${containsAlarm(
+              `Reminder for ${eventName} : ${stageName} - ${simplifyDate(
+                DayBefore(new Date(stageStartDate)),
+                navigator.location
+              )}`
+            )}"
+            data-date="${DayBefore(new Date(stageStartDate))}"
           >
             1 Day Before
           </button>
           <button
             type="button"
             class="reminder-time-button"
-            aria-pressed="false"
+            aria-pressed="${containsAlarm(
+              `Reminder for ${eventName} : ${stageName} - ${simplifyDate(
+                WeekBefore(new Date(stageStartDate)),
+                navigator.location
+              )}`
+            )}"
+            data-date="${WeekBefore(new Date(stageStartDate))}"
           >
             1 Week Before
           </button>
         </div>
         <button class="remind-button remind-me-confirm" type="submit">
-          CONFIRM
+          <p>CONFIRM</p>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <g id="Interface / Check"> <path id="Vector" d="M6 12L10.2426 16.2426L18.727 7.75732" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g> </g></svg>
         </button>
       </form>
     </div>
@@ -267,4 +329,68 @@ function addInfoForEvent(eventId) {
 
     moreInfo_stagesList.insertAdjacentHTML(`beforeend`, stageMarkup);
   });
+}
+
+function addItemsToMenuAlarmList() {
+  alarmsCreated.forEach((alarm) => {
+    const listItemMarkup = `
+        <li class="menu-list-item">
+          <button class="cancel-reminder-button" title="Cancel Reminder">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+              <g
+                id="SVGRepo_tracerCarrier"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></g>
+              <g id="SVGRepo_iconCarrier">
+                <path
+                  d="M18.8,16l5.5-5.5c0.8-0.8,0.8-2,0-2.8l0,0C24,7.3,23.5,7,23,7c-0.5,0-1,0.2-1.4,0.6L16,13.2l-5.5-5.5 c-0.8-0.8-2.1-0.8-2.8,0C7.3,8,7,8.5,7,9.1s0.2,1,0.6,1.4l5.5,5.5l-5.5,5.5C7.3,21.9,7,22.4,7,23c0,0.5,0.2,1,0.6,1.4 C8,24.8,8.5,25,9,25c0.5,0,1-0.2,1.4-0.6l5.5-5.5l5.5,5.5c0.8,0.8,2.1,0.8,2.8,0c0.8-0.8,0.8-2.1,0-2.8L18.8,16z"
+                ></path>
+              </g>
+            </svg>
+          </button>
+          <p>
+            ${alarm.name}
+          </p>
+        </li>
+  `;
+    menuAlarmsListEl.insertAdjacentHTML(`beforeend`, listItemMarkup);
+  });
+}
+
+function HourBefore(date) {
+  return new Date(date - 1000 * 60 * 60);
+}
+
+function DayBefore(date) {
+  return new Date(date - 1000 * 60 * 60 * 24);
+}
+
+function WeekBefore(date) {
+  return new Date(date - 1000 * 60 * 60 * 24 * 7);
+}
+
+function createAlarm(name, date) {
+  if (containsAlarm(name)) return;
+
+  alarmsCreated.push({
+    name,
+    date,
+  });
+  localStorage.setItem(`alarmsCreated`, JSON.stringify(alarmsCreated));
+
+  // if we're not in the extension, don't create an alarm
+  if (!chrome.alarms) return;
+
+  const alarmInfo = {
+    when: date,
+  };
+  chrome.alarms.create(name, alarmInfo, (alarm) => {
+    console.log(`alarm created: ${alarm.name}`);
+  });
+}
+
+function containsAlarm(name) {
+  return alarmsCreated.some((alarm) => alarm.name === name);
 }
